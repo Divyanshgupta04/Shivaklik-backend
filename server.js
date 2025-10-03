@@ -10,9 +10,14 @@ const { verifyEmailTransport } = require('./utils/email');
 
 const app = express();
 const server = http.createServer(app);
+// CORS configuration - use environment variable for production
+const allowedOrigins = process.env.FRONTEND_URL 
+  ? [process.env.FRONTEND_URL, "http://localhost:5173"]
+  : ["http://localhost:5173"];
+
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:5173", // Vite default port
+    origin: allowedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
   }
@@ -20,7 +25,7 @@ const io = socketIo(server, {
 
 // Middleware
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: allowedOrigins,
   credentials: true
 }));
 
@@ -32,20 +37,21 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/shivalik_service_hub',
+    mongoUrl: process.env.ATLAS_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/shivalik_service_hub',
     touchAfter: 24 * 3600 // lazy session update
   }),
   cookie: {
-    secure: false, // set to true if using https
+    secure: process.env.NODE_ENV === 'production', // true in production (https)
     httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24 * 7 // 1 week
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // for cross-site cookies in production
   }
 }));
 
 // MongoDB connection
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/shivalik_service_hub', {
+    await mongoose.connect(process.env.ATLAS_URI || 'mongodb://localhost:27017/shivalik_service_hub', {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
@@ -85,9 +91,22 @@ io.on('connection', (socket) => {
   });
 });
 
+// Health check endpoint for Render
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok',
+    message: 'Server is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Basic route
 app.get('/', (req, res) => {
-  res.json({ message: 'Shivalik Service Hub Backend API' });
+  res.json({ 
+    message: 'Shivalik Service Hub Backend API',
+    version: '1.0.0',
+    status: 'running'
+  });
 });
 
 const PORT = process.env.PORT || 5000;

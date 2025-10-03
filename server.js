@@ -11,20 +11,33 @@ const { verifyEmailTransport } = require('./utils/email');
 const app = express();
 const server = http.createServer(app);
 // CORS configuration - use environment variable for production
-// const allowedOrigins = process.env.FRONTEND_URL 
-//   ? [process.env.FRONTEND_URL, "http://localhost:5173"]
-//   : ["http://localhost:5173"];
+const allowedOrigins = process.env.FRONTEND_URL
+  ? [
+      process.env.FRONTEND_URL,
+      "http://localhost:5173",
+      "https://shivaklik-frontend.vercel.app",
+      "https://shivaklik-frontend-git-main-divyanshgupta04s-projects.vercel.app"
+    ]
+  : ["http://localhost:5173"];
+
 
 const io = socketIo(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: [
+      "https://shivaklik-frontend.vercel.app",
+      "https://shivaklik-frontend-git-main-divyanshgupta04s-projects.vercel.app",
+      "https://shivaklik-frontend-7v3v3f8uc-divyanshgupta04s-projects.vercel.app"
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
   }
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 
 app.use(express.json());
 
